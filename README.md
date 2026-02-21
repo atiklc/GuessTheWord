@@ -1,23 +1,39 @@
-# GuessTheWord
-This is Yiğit's first coding experience.
-
-Bu proje, kelime tahmin oyununun basit bir Python sürümüdür.
-
-## Oyun kuralları
-- Sistem gizli bir kelime seçer.
-- Kelimenin uzunluğuna göre bazı harfler ipucu olarak açılır.
-- Oyuncular sırayla tahmin yapar.
-- Doğru bilen ilk oyuncu **400** puan alır.
-- İkinci oyuncu **300**, üçüncü oyuncu **200**, dördüncü oyuncu **100** puan alır.
-- İlk 4 dışında doğru tahmin edenler o tur puan alamaz.
-- Tur sonunda en yüksek puanlı oyuncu kazanan ilan edilir.
-
-## Çalıştırma
-```bash
-python game.py
-```
-
-## Test
-```bash
-python -m unittest -v
-```
+ # GuessTheWord
+-This is Yiğit's first coding experience.
++
++Tarayıcıdan oynanabilen kelime tahmin oyunu.
++
++## Oyun Kuralları
++- Sistem gizli bir kelime seçer ve kelime uzunluğuna göre harf ipucu verir.
++- Oyuncular sırayla birer tahmin yapar.
++- Doğru bilen ilk 4 oyuncu sırasıyla **400 / 300 / 200 / 100** puan alır.
++- Tur sonunda en yüksek puanlı oyuncu kazanır.
++
++## Lokal Çalıştırma
++Statik bir web uygulamasıdır. Basit bir HTTP sunucusu ile açabilirsiniz:
++
++```bash
++python -m http.server 8000
++```
++
++Ardından tarayıcıda `http://localhost:8000` adresini açın.
++
++## Test
++Python oyun mantığı testleri:
++
++```bash
++python -m unittest -v
++```
++
++## Ücretsiz şekilde internete yayınlama (GitHub Pages)
++Web siteniz olmasa bile bu oyun için ücretsiz bir adres alabilirsiniz:
++
++1. Bu projeyi GitHub'a yükleyin.
++2. GitHub'da repo sayfasında **Settings → Pages** bölümüne gidin.
++3. **Source** olarak `Deploy from a branch` seçin.
++4. Branch olarak `main` (veya projenizin ana branch'i), folder olarak `/ (root)` seçin.
++5. **Save** dedikten sonra birkaç dakika içinde size bir link verilir:
++   - Örnek: `https://kullaniciadi.github.io/GuessTheWord/`
++6. Bu linki paylaşarak oyunu tarayıcıdan oynatabilirsiniz.
++
++> Not: Bu yaklaşım tamamen ücretsizdir ve backend gerekmez.
