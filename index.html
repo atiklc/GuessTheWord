@@ -6,10 +6,10 @@
   <title>GuessTheWord - Web</title>
   <style>
     body{font-family:Arial,sans-serif;background:#f3f6fc;margin:0;padding:24px;display:flex;justify-content:center}
-    .card{width:min(92vw,720px);background:#fff;border-radius:14px;box-shadow:0 10px 24px rgba(0,0,0,.08);padding:20px}
-    h1{margin-top:0} .row{display:grid;gap:8px;margin:12px 0} input,select,button{padding:10px;border-radius:8px;border:1px solid #cbd5e1}
-    button{background:#2563eb;color:#fff;border:none;cursor:pointer} button.secondary{background:#64748b}
-    .hidden{display:none}.ok{color:#166534}.err{color:#b91c1c} ol{padding-left:20px}
+    .card{width:min(92vw,760px);background:#fff;border-radius:14px;box-shadow:0 10px 24px rgba(0,0,0,.08);padding:20px}
+    h1{margin-top:0}.row{display:grid;gap:8px;margin:12px 0}input,button{padding:10px;border-radius:8px;border:1px solid #cbd5e1}
+    button{background:#2563eb;color:#fff;border:none;cursor:pointer}button.secondary{background:#64748b}
+    .hidden{display:none}.ok{color:#166534}.err{color:#b91c1c}ol{padding-left:20px}
   </style>
 </head>
 <body>
@@ -17,15 +17,20 @@
     <h1>Kelime Tahmin Oyunu</h1>
 
     <section id="setup">
-      <p>Oyuncuları virgülle girin ve oyunu başlatın.</p>
+      <p>Oyuncuları virgülle girin, tur sayısını seçin ve oyunu başlatın.</p>
       <div class="row">
         <label>Oyuncular</label>
         <input id="playersInput" placeholder="Ayşe, Mehmet, Zeynep" />
+      </div>
+      <div class="row">
+        <label>Tur Sayısı</label>
+        <input id="roundCountInput" type="number" min="1" value="3" />
       </div>
       <button id="startBtn">Oyunu Başlat</button>
     </section>
 
     <section id="game" class="hidden">
+      <p><b>Tur:</b> <span id="roundLabel"></span></p>
       <p><b>İpucu:</b> <span id="hint"></span></p>
       <p><b>Kelime Uzunluğu:</b> <span id="wordLength"></span></p>
       <p><b>Sıradaki Oyuncu:</b> <span id="currentPlayer"></span></p>
@@ -36,10 +41,13 @@
       </div>
       <button id="guessBtn">Tahmin Et</button>
       <p id="message"></p>
+
+      <h3>Ara Skor Tablosu</h3>
+      <ol id="liveScoreboard"></ol>
     </section>
 
     <section id="result" class="hidden">
-      <h2>Skor Tablosu</h2>
+      <h2>Final Skor Tablosu</h2>
       <ol id="scoreboard"></ol>
       <p id="winner" class="ok"></p>
       <button class="secondary" id="newGameBtn">Yeni Oyun</button>
@@ -53,6 +61,8 @@
     const state = {
       players: [],
       scores: {},
+      totalRounds: 1,
+      currentRound: 1,
       currentIndex: 0,
       secretWord: "",
       correctOrder: []
@@ -71,53 +81,72 @@
       return [...word].map((ch, i) => indexes.has(i) ? ch : "_").join("");
     }
 
-    function showCurrentPlayer() {
-      if (state.currentIndex < state.players.length) {
-        $("currentPlayer").textContent = state.players[state.currentIndex];
-      }
+    function sortedScores() {
+      return Object.entries(state.scores).sort((a, b) => b[1] - a[1]);
     }
 
-    function finishGame() {
-      state.correctOrder.slice(0,4).forEach((name, idx) => state.scores[name] += points[idx]);
-      const sorted = Object.entries(state.scores).sort((a,b) => b[1]-a[1]);
-
-      const list = $("scoreboard");
+    function renderScoreboard(targetId) {
+      const list = $(targetId);
       list.innerHTML = "";
-      sorted.forEach(([name, score]) => {
+      sortedScores().forEach(([name, score]) => {
         const li = document.createElement("li");
         li.textContent = `${name}: ${score} puan`;
         list.appendChild(li);
       });
+    }
 
+    function startRound() {
+      state.secretWord = pickWord();
+      state.correctOrder = [];
+      state.currentIndex = 0;
+
+      $("roundLabel").textContent = `${state.currentRound} / ${state.totalRounds}`;
+      $("hint").textContent = generateHint(state.secretWord);
+      $("wordLength").textContent = state.secretWord.length;
+      $("guessInput").value = "";
+      $("message").textContent = "";
+      $("message").className = "";
+      $("currentPlayer").textContent = state.players[state.currentIndex];
+      renderScoreboard("liveScoreboard");
+    }
+
+    function applyRoundScore() {
+      state.correctOrder.slice(0, 4).forEach((name, idx) => {
+        state.scores[name] += points[idx];
+      });
+    }
+
+    function finishGame() {
+      renderScoreboard("scoreboard");
+      const sorted = sortedScores();
       if (sorted.length) {
         $("winner").textContent = `🏆 Kazanan: ${sorted[0][0]} (${sorted[0][1]} puan)`;
       }
-
       $("game").classList.add("hidden");
       $("result").classList.remove("hidden");
     }
 
     $("startBtn").addEventListener("click", () => {
       const names = $("playersInput").value.split(",").map(v => v.trim()).filter(Boolean);
+      const roundCount = Number($("roundCountInput").value);
       if (!names.length) {
         alert("En az bir oyuncu girin.");
+        return;
+      }
+      if (!Number.isInteger(roundCount) || roundCount < 1) {
+        alert("Tur sayısı 1 veya daha büyük olmalı.");
         return;
       }
 
       state.players = names;
       state.scores = Object.fromEntries(names.map(name => [name, 0]));
-      state.currentIndex = 0;
-      state.correctOrder = [];
-      state.secretWord = pickWord();
+      state.totalRounds = roundCount;
+      state.currentRound = 1;
 
-      $("hint").textContent = generateHint(state.secretWord);
-      $("wordLength").textContent = state.secretWord.length;
       $("setup").classList.add("hidden");
-      $("game").classList.remove("hidden");
       $("result").classList.add("hidden");
-      $("message").textContent = "";
-      $("guessInput").value = "";
-      showCurrentPlayer();
+      $("game").classList.remove("hidden");
+      startRound();
     });
 
     $("guessBtn").addEventListener("click", () => {
@@ -138,9 +167,19 @@
       $("guessInput").value = "";
 
       if (state.currentIndex >= state.players.length) {
-        finishGame();
+        applyRoundScore();
+        renderScoreboard("liveScoreboard");
+
+        if (state.currentRound < state.totalRounds) {
+          state.currentRound += 1;
+          $("message").textContent = `Tur bitti. ${state.currentRound}. tura geçiliyor.`;
+          $("message").className = "ok";
+          startRound();
+        } else {
+          finishGame();
+        }
       } else {
-        showCurrentPlayer();
+        $("currentPlayer").textContent = state.players[state.currentIndex];
       }
     });
 
@@ -149,6 +188,7 @@
       $("game").classList.add("hidden");
       $("result").classList.add("hidden");
       $("playersInput").value = "";
+      $("roundCountInput").value = "3";
     });
   </script>
 </body>
