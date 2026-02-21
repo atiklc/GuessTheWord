@@ -3,193 +3,157 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GuessTheWord - Web</title>
+  <title>GuessTheWord - Çok Oyunculu</title>
   <style>
     body{font-family:Arial,sans-serif;background:#f3f6fc;margin:0;padding:24px;display:flex;justify-content:center}
-    .card{width:min(92vw,760px);background:#fff;border-radius:14px;box-shadow:0 10px 24px rgba(0,0,0,.08);padding:20px}
-    h1{margin-top:0}.row{display:grid;gap:8px;margin:12px 0}input,button{padding:10px;border-radius:8px;border:1px solid #cbd5e1}
-    button{background:#2563eb;color:#fff;border:none;cursor:pointer}button.secondary{background:#64748b}
-    .hidden{display:none}.ok{color:#166534}.err{color:#b91c1c}ol{padding-left:20px}
+    .card{width:min(95vw,840px);background:#fff;border-radius:14px;box-shadow:0 10px 24px rgba(0,0,0,.08);padding:20px}
+    .row{display:grid;gap:8px;margin:10px 0} input,button{padding:10px;border-radius:8px;border:1px solid #cbd5e1}
+    button{background:#2563eb;color:#fff;border:none;cursor:pointer}.secondary{background:#64748b}
+    .hidden{display:none}.ok{color:#166534}.err{color:#b91c1c}
   </style>
 </head>
 <body>
   <main class="card">
-    <h1>Kelime Tahmin Oyunu</h1>
+    <h1>Kelime Tahmin Oyunu (Çok Oyunculu)</h1>
 
-    <section id="setup">
-      <p>Oyuncuları virgülle girin, tur sayısını seçin ve oyunu başlatın.</p>
-      <div class="row">
-        <label>Oyuncular</label>
-        <input id="playersInput" placeholder="Ayşe, Mehmet, Zeynep" />
-      </div>
-      <div class="row">
-        <label>Tur Sayısı</label>
-        <input id="roundCountInput" type="number" min="1" value="3" />
-      </div>
-      <button id="startBtn">Oyunu Başlat</button>
+    <section id="authSection">
+      <h3>Oda Oluştur</h3>
+      <div class="row"><input id="hostName" placeholder="İsminiz (host)" /><input id="roundCount" type="number" min="1" value="3" /><button id="createBtn">Oda Oluştur</button></div>
+      <h3>Odaya Katıl</h3>
+      <div class="row"><input id="joinName" placeholder="İsminiz" /><input id="joinCode" placeholder="Oda kodu" /><button id="joinBtn">Katıl</button></div>
+      <p id="authMsg"></p>
     </section>
 
-    <section id="game" class="hidden">
-      <p><b>Tur:</b> <span id="roundLabel"></span></p>
-      <p><b>İpucu:</b> <span id="hint"></span></p>
-      <p><b>Kelime Uzunluğu:</b> <span id="wordLength"></span></p>
-      <p><b>Sıradaki Oyuncu:</b> <span id="currentPlayer"></span></p>
+    <section id="roomSection" class="hidden">
+      <p><b>Oda:</b> <span id="roomCode"></span></p>
+      <p><b>Durum:</b> <span id="statusText"></span></p>
+      <p><b>Tur:</b> <span id="roundText"></span></p>
+      <p><b>Oyuncular:</b> <span id="playersText"></span></p>
+      <button id="startBtn" class="hidden">Oyunu Başlat (Host)</button>
 
-      <div class="row">
-        <label>Tahmin</label>
-        <input id="guessInput" placeholder="Kelime tahmini" />
+      <div id="playArea" class="hidden">
+        <p><b>İpucu:</b> <span id="hint"></span></p>
+        <p><b>Kelime Uzunluğu:</b> <span id="wordLength"></span></p>
+        <div class="row"><input id="guessInput" placeholder="Tahmin" /><button id="submitBtn">Yanıtı Gönder</button></div>
+        <p id="waitingText"></p>
       </div>
-      <button id="guessBtn">Tahmin Et</button>
-      <p id="message"></p>
 
-      <h3>Ara Skor Tablosu</h3>
-      <ol id="liveScoreboard"></ol>
-    </section>
+      <div id="resultArea" class="hidden">
+        <h3>Tur Sonucu</h3>
+        <p>Doğru bilenler (sırayla): <span id="winners"></span></p>
+        <ol id="leaderboard"></ol>
+        <button id="nextRoundBtn" class="hidden">Sonraki Tura Geç (Host)</button>
+      </div>
 
-    <section id="result" class="hidden">
-      <h2>Final Skor Tablosu</h2>
-      <ol id="scoreboard"></ol>
-      <p id="winner" class="ok"></p>
-      <button class="secondary" id="newGameBtn">Yeni Oyun</button>
+      <div id="finalArea" class="hidden">
+        <h3>Oyun Bitti</h3>
+        <ol id="finalLeaderboard"></ol>
+      </div>
     </section>
   </main>
 
   <script>
-    const words = ["bilgisayar", "yazilim", "algoritma", "oyuncak", "macera", "kelime", "bulmaca"];
-    const points = [400, 300, 200, 100];
-
-    const state = {
-      players: [],
-      scores: {},
-      totalRounds: 1,
-      currentRound: 1,
-      currentIndex: 0,
-      secretWord: "",
-      correctOrder: []
-    };
-
+    const state = {roomCode:'', playerId:'', isHost:false};
     const $ = (id) => document.getElementById(id);
 
-    function pickWord() {
-      return words[Math.floor(Math.random() * words.length)];
+    async function api(path, method='GET', body=null){
+      const opts = {method, headers:{'Content-Type':'application/json'}};
+      if(body) opts.body = JSON.stringify(body);
+      const res = await fetch(path, opts);
+      const data = await res.json();
+      if(!res.ok) throw new Error(data.error || 'Hata');
+      return data;
     }
 
-    function generateHint(word) {
-      const revealCount = Math.max(1, Math.round(word.length * 0.35));
-      const indexes = new Set();
-      while (indexes.size < revealCount) indexes.add(Math.floor(Math.random() * word.length));
-      return [...word].map((ch, i) => indexes.has(i) ? ch : "_").join("");
+    function setMsg(id, text, cls='') { const el=$(id); el.textContent=text; el.className=cls; }
+
+    $('createBtn').onclick = async () => {
+      try {
+        const host_name = $('hostName').value.trim();
+        const total_rounds = Number($('roundCount').value);
+        const data = await api('/api/create', 'POST', {host_name, total_rounds});
+        state.roomCode = data.room_code; state.playerId = data.player_id; state.isHost = true;
+        $('authSection').classList.add('hidden'); $('roomSection').classList.remove('hidden');
+        refreshState();
+      } catch (e) { setMsg('authMsg', e.message, 'err'); }
+    };
+
+    $('joinBtn').onclick = async () => {
+      try {
+        const name = $('joinName').value.trim();
+        const room_code = $('joinCode').value.trim();
+        const data = await api('/api/join', 'POST', {name, room_code});
+        state.roomCode = data.room_code; state.playerId = data.player_id; state.isHost = false;
+        $('authSection').classList.add('hidden'); $('roomSection').classList.remove('hidden');
+        refreshState();
+      } catch (e) { setMsg('authMsg', e.message, 'err'); }
+    };
+
+    $('startBtn').onclick = async () => {
+      try { await api('/api/start', 'POST', {room_code:state.roomCode, player_id:state.playerId}); refreshState(); }
+      catch (e) { alert(e.message); }
+    };
+
+    $('submitBtn').onclick = async () => {
+      const guess = $('guessInput').value.trim();
+      if(!guess) return;
+      try {
+        await api('/api/submit', 'POST', {room_code:state.roomCode, player_id:state.playerId, guess});
+        $('guessInput').value = '';
+        refreshState();
+      } catch (e) { alert(e.message); }
+    };
+
+    $('nextRoundBtn').onclick = async () => {
+      try { await api('/api/next-round', 'POST', {room_code:state.roomCode, player_id:state.playerId}); refreshState(); }
+      catch (e) { alert(e.message); }
+    };
+
+    function renderBoard(listId, leaderboard){
+      const list = $(listId); list.innerHTML='';
+      leaderboard.forEach((r)=>{ const li=document.createElement('li'); li.textContent=`${r.name}: ${r.score} puan`; list.appendChild(li); });
     }
 
-    function sortedScores() {
-      return Object.entries(state.scores).sort((a, b) => b[1] - a[1]);
-    }
+    async function refreshState(){
+      if(!state.roomCode || !state.playerId) return;
+      try {
+        const s = await api(`/api/state?room_code=${state.roomCode}&player_id=${state.playerId}`);
+        $('roomCode').textContent = s.room_code;
+        $('statusText').textContent = s.status;
+        $('roundText').textContent = `${s.current_round} / ${s.total_rounds}`;
+        $('playersText').textContent = s.players.map(p=>p.name).join(', ');
 
-    function renderScoreboard(targetId) {
-      const list = $(targetId);
-      list.innerHTML = "";
-      sortedScores().forEach(([name, score]) => {
-        const li = document.createElement("li");
-        li.textContent = `${name}: ${score} puan`;
-        list.appendChild(li);
-      });
-    }
+        $('startBtn').classList.toggle('hidden', !(s.is_host && s.status==='waiting'));
+        $('playArea').classList.toggle('hidden', s.status!=='playing');
+        $('resultArea').classList.toggle('hidden', !(s.status==='round_result'));
+        $('finalArea').classList.toggle('hidden', s.status!=='finished');
 
-    function startRound() {
-      state.secretWord = pickWord();
-      state.correctOrder = [];
-      state.currentIndex = 0;
-
-      $("roundLabel").textContent = `${state.currentRound} / ${state.totalRounds}`;
-      $("hint").textContent = generateHint(state.secretWord);
-      $("wordLength").textContent = state.secretWord.length;
-      $("guessInput").value = "";
-      $("message").textContent = "";
-      $("message").className = "";
-      $("currentPlayer").textContent = state.players[state.currentIndex];
-      renderScoreboard("liveScoreboard");
-    }
-
-    function applyRoundScore() {
-      state.correctOrder.slice(0, 4).forEach((name, idx) => {
-        state.scores[name] += points[idx];
-      });
-    }
-
-    function finishGame() {
-      renderScoreboard("scoreboard");
-      const sorted = sortedScores();
-      if (sorted.length) {
-        $("winner").textContent = `🏆 Kazanan: ${sorted[0][0]} (${sorted[0][1]} puan)`;
-      }
-      $("game").classList.add("hidden");
-      $("result").classList.remove("hidden");
-    }
-
-    $("startBtn").addEventListener("click", () => {
-      const names = $("playersInput").value.split(",").map(v => v.trim()).filter(Boolean);
-      const roundCount = Number($("roundCountInput").value);
-      if (!names.length) {
-        alert("En az bir oyuncu girin.");
-        return;
-      }
-      if (!Number.isInteger(roundCount) || roundCount < 1) {
-        alert("Tur sayısı 1 veya daha büyük olmalı.");
-        return;
-      }
-
-      state.players = names;
-      state.scores = Object.fromEntries(names.map(name => [name, 0]));
-      state.totalRounds = roundCount;
-      state.currentRound = 1;
-
-      $("setup").classList.add("hidden");
-      $("result").classList.add("hidden");
-      $("game").classList.remove("hidden");
-      startRound();
-    });
-
-    $("guessBtn").addEventListener("click", () => {
-      const guess = $("guessInput").value.trim().toLowerCase();
-      if (!guess) return;
-
-      const player = state.players[state.currentIndex];
-      if (guess === state.secretWord && !state.correctOrder.includes(player)) {
-        state.correctOrder.push(player);
-        $("message").textContent = `✅ ${player} doğru tahmin etti!`;
-        $("message").className = "ok";
-      } else {
-        $("message").textContent = "❌ Yanlış tahmin.";
-        $("message").className = "err";
-      }
-
-      state.currentIndex += 1;
-      $("guessInput").value = "";
-
-      if (state.currentIndex >= state.players.length) {
-        applyRoundScore();
-        renderScoreboard("liveScoreboard");
-
-        if (state.currentRound < state.totalRounds) {
-          state.currentRound += 1;
-          $("message").textContent = `Tur bitti. ${state.currentRound}. tura geçiliyor.`;
-          $("message").className = "ok";
-          startRound();
-        } else {
-          finishGame();
+        if(s.status==='playing'){
+          $('hint').textContent = s.hint;
+          $('wordLength').textContent = s.word_length;
+          const remaining = s.total_players - s.submitted_count;
+          $('waitingText').textContent = s.player_submitted
+            ? `Yanıtınız alındı. Diğer oyuncular bekleniyor (${remaining}).`
+            : `Yanıtını gönderen: ${s.submitted_count}/${s.total_players}`;
+          $('submitBtn').disabled = s.player_submitted;
+          $('guessInput').disabled = s.player_submitted;
         }
-      } else {
-        $("currentPlayer").textContent = state.players[state.currentIndex];
-      }
-    });
 
-    $("newGameBtn").addEventListener("click", () => {
-      $("setup").classList.remove("hidden");
-      $("game").classList.add("hidden");
-      $("result").classList.add("hidden");
-      $("playersInput").value = "";
-      $("roundCountInput").value = "3";
-    });
+        if(s.status==='round_result'){
+          $('winners').textContent = s.round_winners.length ? s.round_winners.join(', ') : 'Bu tur doğru tahmin yok';
+          renderBoard('leaderboard', s.leaderboard);
+          $('nextRoundBtn').classList.toggle('hidden', !s.is_host);
+        }
+
+        if(s.status==='finished'){
+          renderBoard('finalLeaderboard', s.leaderboard);
+        }
+      } catch (e) {
+        setMsg('authMsg', e.message, 'err');
+      }
+    }
+
+    setInterval(refreshState, 1500);
   </script>
 </body>
 </html>
