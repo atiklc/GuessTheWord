@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 import random
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, List
 
 
 @dataclass
@@ -77,7 +77,6 @@ def collect_round_winners(game: GuessTheWordGame, secret_word: str) -> List[str]
 
 def play_cli() -> None:
     words = ["bilgisayar", "yazilim", "algoritma", "oyuncak", "macera", "kelime", "bulmaca"]
-
     game = GuessTheWordGame(words=words)
 
     print("=== Kelime Tahmin Oyununa Hoş Geldiniz ===")
@@ -88,16 +87,25 @@ def play_cli() -> None:
         print("En az bir oyuncu gerekli.")
         return
 
-    secret_word = game.choose_word()
-    hint = game.generate_hint(secret_word)
+    round_count_text = input("Toplam tur sayısı: ").strip()
+    round_count = int(round_count_text) if round_count_text.isdigit() and int(round_count_text) > 0 else 1
 
-    print("\nİpucu:", hint)
-    print("Kelime uzunluğu:", len(secret_word))
+    for round_no in range(1, round_count + 1):
+        secret_word = game.choose_word()
+        hint = game.generate_hint(secret_word)
 
-    winners = collect_round_winners(game, secret_word)
-    game.score_round(winners)
+        print(f"\n=== {round_no}. Tur / {round_count} ===")
+        print("İpucu:", hint)
+        print("Kelime uzunluğu:", len(secret_word))
 
-    print("\n=== Skor Tablosu ===")
+        winners = collect_round_winners(game, secret_word)
+        game.score_round(winners)
+
+        print("\nAra Skor Tablosu")
+        for rank, player in enumerate(game.leaderboard(), start=1):
+            print(f"{rank}. {player.name}: {player.score} puan")
+
+    print("\n=== Oyun Bitti: Final Skor Tablosu ===")
     table = game.leaderboard()
     for rank, player in enumerate(table, start=1):
         print(f"{rank}. {player.name}: {player.score} puan")
