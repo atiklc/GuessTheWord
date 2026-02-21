@@ -31,6 +31,16 @@ class GuessTheWordGameTests(unittest.TestCase):
         self.assertIn("_", hint)
         self.assertTrue(any(ch != "_" for ch in hint))
 
+
+    def test_scores_accumulate_across_rounds(self):
+        self.game.score_round(["Ayşe", "Mehmet"])
+        self.game.score_round(["Mehmet", "Can"])
+
+        leaderboard = {player.name: player.score for player in self.game.leaderboard()}
+        self.assertEqual(leaderboard["Ayşe"], 400)
+        self.assertEqual(leaderboard["Mehmet"], 700)
+        self.assertEqual(leaderboard["Can"], 300)
+
     def test_register_players_keeps_original_display_name(self):
         self.assertIn("ayşe", self.game.players)
         self.assertEqual(self.game.players["ayşe"].name, "Ayşe")
