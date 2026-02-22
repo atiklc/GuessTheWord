@@ -233,6 +233,7 @@ def get_state():
         "player_submitted": player_submitted,
         "leaderboard": room.leaderboard(),
         "round_winners": [room.players[pid].name for pid in room.round_winners] if room.status in {"round_result", "finished"} else [],
+        "revealed_word": room.secret_word if room.status in {"round_result", "finished"} else "",
     }
     return jsonify(payload)
 
