@@ -40,6 +40,7 @@
 
       <div id="resultArea" class="hidden">
         <h3>Tur Sonucu</h3>
+        <p><b>Hedef Kelime:</b> <span id="revealedWord"></span></p>
         <p>Doğru bilenler (sırayla): <span id="winners"></span></p>
         <ol id="leaderboard"></ol>
         <button id="nextRoundBtn" class="hidden">Sonraki Tura Geç (Host)</button>
@@ -47,6 +48,7 @@
 
       <div id="finalArea" class="hidden">
         <h3>Oyun Bitti</h3>
+        <p><b>Son Tur Hedef Kelime:</b> <span id="finalRevealedWord"></span></p>
         <ol id="finalLeaderboard"></ol>
       </div>
     </section>
@@ -141,11 +143,13 @@
 
         if(s.status==='round_result'){
           $('winners').textContent = s.round_winners.length ? s.round_winners.join(', ') : 'Bu tur doğru tahmin yok';
+          $('revealedWord').textContent = s.revealed_word || "-";
           renderBoard('leaderboard', s.leaderboard);
           $('nextRoundBtn').classList.toggle('hidden', !s.is_host);
         }
 
         if(s.status==='finished'){
+          $('finalRevealedWord').textContent = s.revealed_word || "-";
           renderBoard('finalLeaderboard', s.leaderboard);
         }
       } catch (e) {
